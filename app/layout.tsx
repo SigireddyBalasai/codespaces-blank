@@ -1,7 +1,7 @@
 import LogoutButton from '@/components/LogoutButton';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from '@/lib/providers';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { PropsWithChildren } from 'react';
@@ -15,9 +15,24 @@ export const metadata = {
 
 export default async function RootLayout({ children }: PropsWithChildren) {
   // Keep cookies in the JS execution context for Next.js build
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
-  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!supabaseUrl || !supabaseKey) {
+    return (
+      <html lang="en" className="h-full">
+        <body className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Missing Environment Variables</h1>
+            <p>Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_KEY in your environment.</p>
+            <p>Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.</p>
+          </div>
+        </body>
+      </html>
+    );
+  }
+  const supabase = createServerClient(supabaseUrl, supabaseKey, { cookies: cookieStore });
 
   const {
     data: { user },

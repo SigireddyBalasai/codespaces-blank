@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: true,
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   webpack: (config) => {
     config.resolve.alias = {
@@ -11,6 +13,7 @@ const nextConfig = {
     };
     return config;
   },
+  output: 'standalone',
 };
 
 module.exports = nextConfig;
