@@ -20,16 +20,30 @@ export async function GET(request: Request) {
   console.log('code', code);
   if (code) {
     const cookieStore = await cookies()
+    // Log cookie store to verify cookies are being passed correctly
+    console.log('Cookie store:', cookieStore.getAll())
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: cookieStore,
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: CookieOptions) {
+            cookieStore.set({ name, value: '', ...options })
+          },
+        },
       },
     )
 
-    await supabase.auth.exchangeCodeForSession(code)
+    // Log supabase auth cookie after exchange
+    const session = await supabase.auth.exchangeCodeForSession(code)
+    console.log('Auth cookies after exchange:', cookieStore.getAll())
   }
 
   // URL to redirect to after sign in process completes

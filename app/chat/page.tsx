@@ -5,11 +5,14 @@ import { Input } from '@/components/ui/input';
 import { usePipeline } from '@/lib/hooks/use-pipeline';
 import { cn } from '@/lib/utils';
 import { Database } from '@/supabase/functions/_lib/database';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { useChat } from 'ai/react';
 
 export default function ChatPage() {
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const generateEmbedding = usePipeline(
     'feature-extraction',

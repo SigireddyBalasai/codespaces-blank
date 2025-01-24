@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Providers from '@/lib/providers';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { CookieOptions } from '@supabase/ssr';
 import Link from 'next/link';
 import { PropsWithChildren } from 'react';
 import 'three-dots/dist/three-dots.css';
@@ -16,6 +17,19 @@ export const metadata = {
 export default async function RootLayout({ children }: PropsWithChildren) {
   // Keep cookies in the JS execution context for Next.js build
   const cookieStore = await cookies();
+
+  // Cookie methods for getting values
+  const getCookie = (name: string) => {
+    return cookieStore.get(name)?.value;
+  };
+
+  const getAllCookies = () => {
+    return cookieStore.getAll();
+  };
+
+  const hasCookie = (name: string) => {
+    return cookieStore.has(name);
+  };
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -32,8 +46,23 @@ export default async function RootLayout({ children }: PropsWithChildren) {
       </html>
     );
   }
-  const supabase = createServerClient(supabaseUrl, supabaseKey, { cookies: cookieStore });
-
+  const supabase = createServerClient(
+    supabaseUrl,
+    supabaseKey,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set(name, value, options)
+        },
+        remove(name: string, options: CookieOptions) {
+          cookieStore.set(name, '', options)
+        },
+      },
+    }
+  );
   const {
     data: { user },
   } = await supabase.auth.getUser();

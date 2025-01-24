@@ -1,20 +1,33 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+'use client';
+
+import { createBrowserClient } from '@supabase/ssr';
 import { redirect } from 'next/navigation';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 
-export default async function FilesLayout({ children }: PropsWithChildren) {
-  // Keep cookies in the JS execution context for Next.js build
-  const cookieStore = cookies();
+export default function FilesLayout({ children }: PropsWithChildren) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        redirect('/login');
+      } else {
+        setIsAuthenticated(true);
+      }
+    };
 
-  if (!user) {
-    return redirect('/login');
+    checkUser();
+  }, []);
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return <>{children}</>;
