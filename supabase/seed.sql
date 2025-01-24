@@ -1,4 +1,4 @@
 select vault.create_secret(
-  "https://fsomtisplupmnipcjznn.supabase.co",
+  "https://xxoifvbpfsccfsztqlpm.supabase.co",
   'supabase_url'
 );
