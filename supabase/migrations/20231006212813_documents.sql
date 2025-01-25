@@ -21,7 +21,7 @@ create table document_sections (
   id bigint primary key generated always as identity,
   document_id bigint not null references documents (id),
   content text not null,
-  embedding vector (1536)
+  embedding vector (3072)
 );
 
 create index on document_sections using hnsw (embedding vector_ip_ops);

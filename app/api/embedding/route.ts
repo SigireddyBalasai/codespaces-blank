@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
         console.log('Calling OpenAI embeddings API...');
         const data = await openai.embeddings.create({
-            model: "text-embedding-3-small",
+            model: "text-embedding-3-large",
             input: input,
         });
 
