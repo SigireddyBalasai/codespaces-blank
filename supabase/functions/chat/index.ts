@@ -58,7 +58,8 @@ Deno.serve(async (req) => {
     },
   });
 
-  const { messages, embedding } = await req.json();
+  const { messages, embedding, history } = await req.json();
+  const chatHistory = history ? JSON.parse(history) : [];
 
   const { data: documents, error: matchError } = await supabase
     .rpc('match_document_sections', {
@@ -89,35 +90,34 @@ Deno.serve(async (req) => {
 
   console.log(injectedDocs);
 
-  const completionMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
-    [
-      {
-        role: 'user',
-        content: codeBlock`
-        You're an AI assistant who answers questions about documents.
+  const completionMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: codeBlock`
+        You are a helpful customer service chatbot. Maintain context from chat history while providing clear, concise answers based on the documents below.
 
-        You're a chat bot, so keep your replies succinct.
+        Rules:
+        - Consider previous context from chat history
+        - Be friendly and professional
+        - Only use information from the provided documents
+        - If information is not in documents, respond: "I apologize, but I don't have information about that in my knowledge base."
+        - Stay focused on customer queries
+        - Provide direct, actionable answers when possible
 
-        You're only allowed to use the documents below to answer the question.
-
-        If the question isn't related to these documents, say:
-        "Sorry, I couldn't find any information on that."
-
-        If the information isn't available in the below documents, say:
-        "Sorry, I couldn't find any information on that."
-
-        Do not go off topic.
-
-        Documents:
+        Reference Documents:
         ${injectedDocs}
       `,
-      },
-      ...messages,
-    ];
+    },
+    ...chatHistory.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content
+    })),
+    ...messages,
+  ];
 
   const completionStream = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo-0125',
-    messages: completionMessages,
+    model: 'gpt-4-0125-preview',
+    messages: completionMessages.slice(-10), // Keep last 10 messages for context
     max_tokens: 1024,
     temperature: 0,
     stream: true,

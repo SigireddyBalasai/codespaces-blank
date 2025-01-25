@@ -2,11 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePipeline } from '@/lib/hooks/use-pipeline';
 import { cn } from '@/lib/utils';
 import { Database } from '@/supabase/functions/_lib/database';
 import { createBrowserClient } from '@supabase/ssr';
 import { useChat } from 'ai/react';
+import { useEffect, useState } from 'react';
 
 export default function ChatPage() {
   const supabase = createBrowserClient<Database>(
@@ -14,17 +14,29 @@ export default function ChatPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const generateEmbedding = usePipeline(
-    'feature-extraction',
-    'Supabase/gte-small'
-  );
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
       api: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
     });
 
-  const isReady = !!generateEmbedding;
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+      setChatHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const newHistory = [...messages];
+      localStorage.setItem('chatHistory', JSON.stringify(newHistory));
+      setChatHistory(newHistory);
+    }
+  }, [messages]);
+
+  const isReady = true;
 
   return (
     <div className="max-w-6xl flex flex-col items-center w-full h-full">
@@ -44,7 +56,7 @@ export default function ChatPage() {
           {isLoading && (
             <div className="self-start m-6 text-gray-500 before:text-gray-500 after:text-gray-500 dot-pulse" />
           )}
-          {messages.length === 0 && (
+          {messages.length === 0 && chatHistory.length === 0 && (
             <div className="self-stretch flex grow items-center justify-center">
               <svg
                 className="opacity-10"
@@ -66,24 +78,22 @@ export default function ChatPage() {
           className="flex items-center space-x-2 gap-2"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (!generateEmbedding) {
-              throw new Error('Unable to generate embeddings');
-            }
-
-            const output = await generateEmbedding(input, {
-              pooling: 'mean',
-              normalize: true,
-            });
-
-            const embedding = JSON.stringify(Array.from(output.data));
 
             const {
               data: { session },
             } = await supabase.auth.getSession();
 
-            if (!session) {
-              return;
-            }
+            if (!session) return;
+
+            const response = await fetch('/api/embedding', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ input })
+            });
+
+            const { data } = await response.json();
 
             handleSubmit(e, {
               options: {
@@ -91,7 +101,8 @@ export default function ChatPage() {
                   authorization: `Bearer ${session.access_token}`,
                 },
                 body: {
-                  embedding,
+                  embedding: data.data[0].embedding,
+                  history: JSON.stringify(chatHistory.slice(-8))
                 },
               },
             });
